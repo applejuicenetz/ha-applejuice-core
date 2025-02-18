@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "appleJuice Core Verbindungs-information",
+        "data": {
+          "url": "Host",
+          "port": "XML-Port",
+          "tls": "Verwende TLS (nur Wenn du einen Reverse Proxy verwendest)"
+        }
+      }
+    },
+    "error": {
+      "host_error": "Ungültiger Host. Enthält nicht \"http://\", \"https://\", oder einen abschließenden Schrägstrich.",
+      "port_error": "Ungültiger Port, muss eine Zahl zwischen 1 und 65535 sein.",
+      "core_connection_error": "Verbindung fehlgeschlagen."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Konfiguration",
+        "data": {
+          "polling_rate": "Integrations Abfrage Rate (s)"
+        }
+      }
+    }
+  }
+}

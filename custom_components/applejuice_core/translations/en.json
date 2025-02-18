@@ -1,0 +1,29 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "description": "appleJuice Core connection information",
+        "data": {
+          "url": "Host",
+          "port": "XML-Port",
+          "tls": "Uses TLS (only if you are using a reverse proxy)"
+        }
+      }
+    },
+    "error": {
+      "host_error": "Invalid host. Don't include \"http://\", \"https://\", or a trailing slash.",
+      "port_error": "Invalid port, must be a number between 1 and 65535.",
+      "core_connection_error": "Failed to connect."
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Configuration",
+        "data": {
+          "polling_rate": "Integration polling rate (s)"
+        }
+      }
+    }
+  }
+}
