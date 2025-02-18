@@ -60,7 +60,7 @@ class AppleJuiceConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
             return self.async_create_entry(title=f"{user_input[CONF_URL]}:{user_input[CONF_PORT]}", data=user_input)
 
-        user_input = {CONF_URL: "192.168.178.10", CONF_PORT: 9851, CONF_TLS: False, CONF_PASSWORD: ""}
+        user_input = {CONF_URL: "", CONF_PORT: 9851, CONF_TLS: False, CONF_PASSWORD: ""}
 
         return await self._show_config_form(user_input)
 

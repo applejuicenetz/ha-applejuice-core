@@ -6,9 +6,9 @@ appleJuice Core Integration für Home Assistant.
 
 ## Installation
 
-1. Öffnen [HACS](https://hacs.xyz) in Home Assistant.
+1. Öffnen [HACS](https://hacs.xyz) in Home Assistant
 
-2. Klicke auf die drei Punkte in der oberen rechten Ecke und wähle "Benutzerdefinierte Repositories".
+2. Klicke auf die drei Punkte in der oberen rechten Ecke und wähle "Benutzerdefinierte Repositories"
 
 3. Füge ein neues benutzerdefiniertes Repository hinzu:
 
@@ -16,17 +16,19 @@ appleJuice Core Integration für Home Assistant.
 
     - **Kategorie:** Integration
 
-4. Klicke auf "Hinzufügen".
+4. Klicke auf "Hinzufügen"
 
-5. Klicke die `appleJuice Core` Integration.
+5. Klicke die `appleJuice Core` Integration
 
-6. Klicke auf "HERUNTERLADEN".
+6. Klicke auf "HERUNTERLADEN"
 
-7. Navigiere zu "Einstellungen" - "Geräte & Dienste".
+7. starte Home Assistant neu
 
-8. Klicke auf "INTEGRATION HINZUFÜGEN" und wähle die `appleJuice Core` Integration.
+8. Navigiere zu "Einstellungen" - "Geräte & Dienste"
 
-9. Gieb den Host, XMl-Port und dein appleJuice Core Passwort ein und klicke auf "OK".
+9. Klicke auf "INTEGRATION HINZUFÜGEN" und wähle die `appleJuice Core` Integration
+
+10. Gib den `Host`, `XML-Port` und dein appleJuice Core `Passwort` ein und klicke auf "OK"
 
 ## Screenshot
 

@@ -4,9 +4,9 @@
       "user": {
         "description": "appleJuice Core Verbindungs-information",
         "data": {
-          "url": "Host",
+          "url": "Host/IP",
           "port": "XML-Port",
-          "tls": "Verwende TLS (nur Wenn du einen Reverse Proxy verwendest)"
+          "tls": "Verwende TLS (sofern Reverse Proxy in verwendung ist)"
         }
       }
     },

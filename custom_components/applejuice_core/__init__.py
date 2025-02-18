@@ -1,4 +1,4 @@
-"""appleJuice core integration for Home Assistant."""
+"""appleJuice Core integration for Home Assistant."""
 
 import asyncio
 import logging
@@ -32,7 +32,7 @@ _LOGGER.debug("loading appleJuice Core init")
 
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the appleJuice core integration."""
+    """Set up the appleJuice Core integration."""
     hass.data.setdefault(DOMAIN, {})
     return True
 
