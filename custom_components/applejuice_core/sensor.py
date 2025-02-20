@@ -23,15 +23,6 @@ from .entity import BaseAppleJuiceCoreEntity, BaseAppleJuiceNetworkEntity
 
 _LOGGER = logging.getLogger(__name__)
 
-CONF_HTTPS = "https"
-CONF_UPDATE_INTERVAL = "update_interval"
-
-# Define unique icons for each sensor
-SENSOR_ICONS = {
-    "applejuice_servers": "mdi:server",
-    "connected_server_name": "mdi:server-network",
-}
-
 
 @dataclass
 class AppleJuiceBaseSensorDescription(SensorEntityDescription):

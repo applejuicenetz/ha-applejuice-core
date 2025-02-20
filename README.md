@@ -1,4 +1,4 @@
-# appleJuice Core für Home Assistant
+# appleJuice Core Integration für Home Assistant
 
 appleJuice Core Integration für Home Assistant.
 
@@ -29,6 +29,17 @@ appleJuice Core Integration für Home Assistant.
 9. Klicke auf `INTEGRATION HINZUFÜGEN` und wähle die `appleJuice Core` Integration
 
 10. Gib `Host/IP`, `XML-Port` und das appleJuice Core `Passwort` ein und klicke auf `OK`
+
+## debugging
+
+in der `configuration.yaml` kannst du das Logging-Level für die `appleJuice Core` Integration anpassen:
+
+```yaml
+logger:
+  default: warning
+  logs:
+    custom_components.applejuice_core: debug
+```
 
 ## Screenshot
 
