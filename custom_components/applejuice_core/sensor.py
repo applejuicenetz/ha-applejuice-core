@@ -175,7 +175,7 @@ SENSORS_NETWORK: tuple[AppleJuiceBaseSensorDescription, ...] = [
         unit=UnitOfInformation.TERABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         subscriptions=[("networkinfo", "filesize")],
-        value_fn=lambda sensor: round(float(sensor.coordinator.data.find("networkinfo").attrib.get("filesize", "0")) / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(float(sensor.coordinator.data.find("networkinfo").attrib.get("filesize", "0").replace(",", ".")) / 1024 / 1024, 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="known_servers",
