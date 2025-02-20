@@ -49,7 +49,7 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.TOTAL_INCREASING,
         subscriptions=[("information", "credits")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("credits", "0")) / 1024 / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("credits", "0")) / (1024 ** 3), 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="sessionupload",
@@ -59,7 +59,7 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
         subscriptions=[("information", "sessionupload")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessionupload", "0")) / 1024 / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessionupload", "0")) / (1024 ** 3), 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="sessiondownload",
@@ -69,7 +69,7 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
         subscriptions=[("information", "sessiondownload")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessiondownload", "0")) / 1024 / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessiondownload", "0")) / (1024 ** 3), 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="uploadspeed",
@@ -79,7 +79,7 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         subscriptions=[("information", "uploadspeed")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("uploadspeed", "0")) / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("uploadspeed", "0")) / (1024 ** 2), 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="downloadspeed",
@@ -89,7 +89,7 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
         subscriptions=[("information", "downloadspeed")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("downloadspeed", "0")) / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("downloadspeed", "0")) / (1024 ** 2), 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="openconnections",
@@ -148,7 +148,7 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         unit=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         subscriptions=[("shares")],
-        value_fn=lambda sensor: round(sum(int(share.attrib.get("size", 0)) for share in sensor.coordinator.data.find("shares").findall("share")) / 1024 / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(sum(int(share.attrib.get("size", 0)) for share in sensor.coordinator.data.find("shares").findall("share")) / (1024 ** 3), 2),
     ),
 ]
 
@@ -175,7 +175,7 @@ SENSORS_NETWORK: tuple[AppleJuiceBaseSensorDescription, ...] = [
         unit=UnitOfInformation.TERABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         subscriptions=[("networkinfo", "filesize")],
-        value_fn=lambda sensor: round(float(sensor.coordinator.data.find("networkinfo").attrib.get("filesize", "0").replace(",", ".")) / 1024 / 1024, 2),
+        value_fn=lambda sensor: round(float(sensor.coordinator.data.find("networkinfo").attrib.get("filesize", "0").replace(",", ".")) / (1024 ** 2), 2),
     ),
     AppleJuiceBaseSensorDescription(
         key="known_servers",
