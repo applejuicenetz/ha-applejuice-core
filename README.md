@@ -14,22 +14,24 @@ appleJuice Core Integration für Home Assistant.
 
     - **URL:** `https://github.com/applejuicenetz/ha-applejuice-core`
 
-    - **Kategorie:** Integration
+    - **Kategorie:** `Integration`
 
-4. Klicke auf "Hinzufügen"
+4. Klicke auf `Hinzufügen`
 
 5. Klicke die `appleJuice Core` Integration
 
-6. Klicke auf "HERUNTERLADEN"
+6. Klicke auf `HERUNTERLADEN`
 
-7. starte Home Assistant neu
+7. starte `Home Assistant` neu
 
-8. Navigiere zu "Einstellungen" - "Geräte & Dienste"
+8. Navigiere zu `Einstellungen` - `Geräte & Dienste`
 
-9. Klicke auf "INTEGRATION HINZUFÜGEN" und wähle die `appleJuice Core` Integration
+9. Klicke auf `INTEGRATION HINZUFÜGEN` und wähle die `appleJuice Core` Integration
 
-10. Gib den `Host`, `XML-Port` und dein appleJuice Core `Passwort` ein und klicke auf "OK"
+10. Gib `Host/IP`, `XML-Port` und das appleJuice Core `Passwort` ein und klicke auf `OK`
 
 ## Screenshot
 
-![](./docs/integration_screenshot.png)
+![](./docs/integration_screenshot_settings.png)
+![](./docs/integration_screenshot_core.png)
+![](./docs/integration_screenshot_network.png)

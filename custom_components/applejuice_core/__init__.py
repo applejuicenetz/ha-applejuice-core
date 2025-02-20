@@ -19,7 +19,6 @@ from .const import (
     CONF_TLS,
     PLATFORMS,
     CONF_OPTION_POLLING_RATE,
-    TIMEOUT,
 )
 
 from .api import get_xml_data

@@ -19,7 +19,7 @@ from homeassistant.components.sensor import (
 )
 
 from .const import DOMAIN
-from .entity import BaseAppleJuiceCoreEntity
+from .entity import BaseAppleJuiceCoreEntity, BaseAppleJuiceNetworkEntity
 
 _LOGGER = logging.getLogger(__name__)
 
@@ -34,7 +34,7 @@ SENSOR_ICONS = {
 
 
 @dataclass
-class AppleJuiceCoreSensorDescription(SensorEntityDescription):
+class AppleJuiceBaseSensorDescription(SensorEntityDescription):
     """Class describing appleJuice Core sensor entities."""
 
     key: str
@@ -49,8 +49,8 @@ class AppleJuiceCoreSensorDescription(SensorEntityDescription):
     entity_category: str | None = None
 
 
-SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
-    AppleJuiceCoreSensorDescription(
+SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
+    AppleJuiceBaseSensorDescription(
         key="credits",
         name="Credits",
         icon="mdi:cash",
@@ -60,7 +60,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("information", "credits")],
         value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("credits", "0")) / 1024 / 1024 / 1024, 2),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="sessionupload",
         name="Session Upload",
         icon="mdi:upload-network",
@@ -70,7 +70,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("information", "sessionupload")],
         value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessionupload", "0")) / 1024 / 1024 / 1024, 2),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="sessiondownload",
         name="Session Download",
         icon="mdi:download-network",
@@ -80,7 +80,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("information", "sessiondownload")],
         value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessiondownload", "0")) / 1024 / 1024 / 1024, 2),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="uploadspeed",
         name="Upload Speed",
         icon="mdi:upload",
@@ -90,7 +90,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("information", "uploadspeed")],
         value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("uploadspeed", "0")) / 1024 / 1024, 2),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="downloadspeed",
         name="Download Speed",
         icon="mdi:download",
@@ -100,7 +100,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("information", "downloadspeed")],
         value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("downloadspeed", "0")) / 1024 / 1024, 2),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="openconnections",
         name="Connections",
         icon="mdi:connection",
@@ -108,7 +108,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("information", "openconnections")],
         value_fn=lambda sensor: sensor.coordinator.data.find("information").attrib.get("openconnections", "0"),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="downloads",
         name="Downloads",
         icon="mdi:download-multiple",
@@ -116,7 +116,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("download")],
         value_fn=lambda sensor: len(sensor.coordinator.data.findall("download")),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="uploads",
         name="Uploads",
         icon="mdi:upload-multiple",
@@ -124,16 +124,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("upload")],
         value_fn=lambda sensor: len(sensor.coordinator.data.findall("upload")),
     ),
-    AppleJuiceCoreSensorDescription(
-        key="known_servers",
-        name="Known Servers",
-        icon="mdi:server",
-        device_class=SensorStateClass.TOTAL,
-        subscriptions=[("server")],
-        entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda sensor: len(sensor.coordinator.data.findall("server")),
-    ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="connected_server_name",
         name="Connected Server",
         icon="mdi:server-network",
@@ -142,7 +133,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda sensor: sensor.coordinator.data.find("server[@id='{}']".format(sensor.coordinator.data.find("networkinfo").attrib.get("connectedwithserverid", ""))).attrib.get("host", "Unknown"),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="connectedsince",
         name="Connected Since",
         icon="mdi:clock-outline",
@@ -151,7 +142,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         entity_category=EntityCategory.DIAGNOSTIC,
         value_fn=lambda sensor: datetime.fromtimestamp(int(sensor.coordinator.data.find("networkinfo").attrib.get("connectedsince", "0")) / 1000.0),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="shared_files",
         name="Shared Files",
         icon="mdi:folder-file-outline",
@@ -159,7 +150,7 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         subscriptions=[("shares")],
         value_fn=lambda sensor: len(sensor.coordinator.data.find("shares").findall("share")),
     ),
-    AppleJuiceCoreSensorDescription(
+    AppleJuiceBaseSensorDescription(
         key="shared_size",
         name="Share Size",
         icon="mdi:file-outline",
@@ -167,6 +158,41 @@ SENSORS: tuple[AppleJuiceCoreSensorDescription, ...] = [
         device_class=SensorDeviceClass.DATA_SIZE,
         subscriptions=[("shares")],
         value_fn=lambda sensor: round(sum(int(share.attrib.get("size", 0)) for share in sensor.coordinator.data.find("shares").findall("share")) / 1024 / 1024 / 1024, 2),
+    ),
+]
+
+SENSORS_NETWORK: tuple[AppleJuiceBaseSensorDescription, ...] = [
+    AppleJuiceBaseSensorDescription(
+        key="users",
+        name="Users",
+        icon="mdi:account-group",
+        state_class=SensorStateClass.TOTAL,
+        subscriptions=[("networkinfo", "users")],
+        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("users", "0"),
+    ),
+    AppleJuiceBaseSensorDescription(
+        key="global_files",
+        name="Global Files",
+        icon="mdi:folder-file-outline",
+        state_class=SensorStateClass.TOTAL,
+        subscriptions=[("networkinfo", "files")],
+        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("files", "0"),
+    ),
+    AppleJuiceBaseSensorDescription(
+        key="global_file_size",
+        name="Global Size",
+        unit=UnitOfInformation.TERABYTES,
+        device_class=SensorDeviceClass.DATA_SIZE,
+        subscriptions=[("networkinfo", "filesize")],
+        value_fn=lambda sensor: round(float(sensor.coordinator.data.find("networkinfo").attrib.get("filesize", "0")) / 1024 / 1024, 2),
+    ),
+    AppleJuiceBaseSensorDescription(
+        key="known_servers",
+        name="Known Servers",
+        icon="mdi:server",
+        state_class=SensorStateClass.TOTAL,
+        subscriptions=[("server")],
+        value_fn=lambda sensor: len(sensor.coordinator.data.findall("server")),
     ),
 ]
 
@@ -180,10 +206,35 @@ async def async_setup_entry(hass, entry, async_add_entities):
 
 async def async_setup_basic_sensor(coordinator, entry, async_add_entities):
     """Set basic sensor platform."""
-    async_add_entities([AppleJuiceCoreSensor(coordinator, entry, desc) for desc in SENSORS])
+    async_add_entities(
+        [AppleJuiceCoreSensor(coordinator, entry, desc) for desc in SENSORS_CORE] +
+        [AppleJuiceNetworkSensor(coordinator, entry, desc) for desc in SENSORS_NETWORK]
+    )
 
 
 class AppleJuiceCoreSensor(BaseAppleJuiceCoreEntity, SensorEntity):
+    """AppleJuiceCoreSensor Sensor class."""
+
+    def __init__(self, coordinator, entry, description):
+        """Init."""
+        super().__init__(coordinator, entry)
+        self.coordinator = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
+        self._attr_name = description.name
+        self._attr_has_entity_name = True
+        self.entity_description = description
+        self._attr_native_value = description.value_fn(self)
+        self._attr_icon = description.icon
+        self._attr_native_unit_of_measurement = description.unit
+
+    @callback
+    def _handle_coordinator_update(self) -> None:
+        """Handle updated data from the coordinator."""
+        self._attr_native_value = self.entity_description.value_fn(self)
+        self.async_write_ha_state()
+
+
+class AppleJuiceNetworkSensor(BaseAppleJuiceNetworkEntity, SensorEntity):
     """AppleJuiceCoreSensor Sensor class."""
 
     def __init__(self, coordinator, entry, description):

@@ -6,7 +6,7 @@
         "data": {
           "url": "Host/IP",
           "port": "XML-Port",
-          "tls": "Verwende TLS (sofern Reverse Proxy in verwendung ist)"
+          "tls": "Verwende TLS (sofern Reverse Proxy in Verwendung ist)"
         }
       }
     },

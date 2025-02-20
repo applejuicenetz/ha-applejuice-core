@@ -1,7 +1,6 @@
 from homeassistant.const import Platform
 
 DOMAIN = "applejuice_core"
-DOMAIN_DATA = f"{DOMAIN}_data"
 
 PLATFORMS = [
     Platform.SENSOR,
