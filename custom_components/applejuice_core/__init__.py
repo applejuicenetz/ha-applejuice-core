@@ -4,11 +4,13 @@ import asyncio
 import logging
 from datetime import timedelta
 import xml.etree.ElementTree as ET
+import voluptuous as vol
 
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
+from homeassistant.helpers import config_validation as cv
 from homeassistant.helpers.typing import ConfigType
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
 from .const import (
@@ -29,6 +31,12 @@ _LOGGER = logging.getLogger(__name__)
 
 _LOGGER.debug("loading appleJuice Core init")
 
+CONFIG_SCHEMA = vol.Schema(
+    {
+        DOMAIN: cv.empty_config_schema,
+    },
+    extra=vol.ALLOW_EXTRA,
+)
 
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Set up the appleJuice Core integration."""
