@@ -1,4 +1,6 @@
 """Binary sensors platform for appleJuice Core integration."""
+from typing import Callable
+
 import logging
 from dataclasses import dataclass
 
@@ -24,11 +26,38 @@ class AppleJuiceCoreBinarySensorDescription(BinarySensorEntityDescription):
 
     key: str
     name: str
+    value_fn: Callable | None = None
     sensor_name: str | None = None
     subscriptions: list | None = None
     icon: str | None = None
     device_class: str | None = None
     entity_category: str | None = None
+
+
+BINARY_SENSORS: tuple[AppleJuiceCoreBinarySensorDescription, ...] = [
+    AppleJuiceCoreBinarySensorDescription(
+        key="firewalled",
+        sensor_name="firewalled",
+        name="Firewall",
+        subscriptions=[("networkinfo", "firewalled")],
+        icon="mdi:security",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("firewalled", "false") == "true",
+
+    ),
+    AppleJuiceCoreBinarySensorDescription(
+        key="paused",
+        sensor_name="paused",
+        name="Paused",
+        subscriptions=[("networkinfo", "paused")],
+        icon="mdi:pause-circle",
+        device_class=BinarySensorDeviceClass.PROBLEM,
+        entity_category=EntityCategory.DIAGNOSTIC,
+        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("paused", "true") == "true",
+
+    )
+]
 
 
 async def async_setup_entry(hass, entry, async_add_devices):
@@ -41,19 +70,9 @@ async def async_setup_entry(hass, entry, async_add_devices):
 async def async_setup_update_binary_sensors(coordinator, entry, async_add_entities):
     """Set Machine Update binary sensor."""
 
-    desc = AppleJuiceCoreBinarySensorDescription(
-        key="firewalled",
-        sensor_name="firewalled",
-        name="Firewall",
-        subscriptions=[("networkinfo", "firewalled")],
-        icon="mdi:security",
-        device_class=BinarySensorDeviceClass.PROBLEM,
-        entity_category=EntityCategory.DIAGNOSTIC,
-    )
-
-    await coordinator.async_refresh()
-
-    async_add_entities([AppleJuiceCoreBinarySensor(coordinator, entry, desc)])
+    async_add_entities([
+        AppleJuiceCoreBinarySensor(coordinator, entry, desc) for desc in BINARY_SENSORS
+    ])
 
 
 class AppleJuiceCoreBinarySensor(BaseAppleJuiceCoreEntity, BinarySensorEntity):
@@ -77,9 +96,6 @@ class AppleJuiceCoreBinarySensor(BaseAppleJuiceCoreEntity, BinarySensorEntity):
 
     @property
     def is_on(self):
-        """Return true if the system is firewalled."""
-        xml_data = self.coordinator.data
-        if xml_data is not None:
-            networkinfo = xml_data.find("networkinfo")
-            return networkinfo.attrib.get("firewalled", "false") == "true"
+        if self.entity_description.value_fn:
+            return self.entity_description.value_fn(self)
         return False
