@@ -5,6 +5,7 @@ DOMAIN = "applejuice_core"
 PLATFORMS = [
     Platform.SENSOR,
     Platform.BINARY_SENSOR,
+    Platform.BUTTON,
 ]
 
 CONF_URL = "url"

@@ -15,6 +15,25 @@ from .const import TIMEOUT
 _LOGGER = logging.getLogger(__name__)
 
 
+async def call_function(hass: HomeAssistant, url: str, port: int, password: str, tls: bool, method: str):
+    """Call a function asynchronously using aiohttp."""
+
+    session = aiohttp_client.async_get_clientsession(hass)
+    protocol = "https" if tls else "http"
+    hashed_password = hashlib.md5(password.encode()).hexdigest()
+    full_url = f"{protocol}://{url}:{port}/function/{method}?password={hashed_password}"
+
+    try:
+        async with asyncio.timeout(TIMEOUT):
+            async with session.get(full_url) as response:
+                response.raise_for_status()
+                return True
+    except aiohttp.ClientError as e:
+        _LOGGER.error("Error while calling function: %s", e)
+
+    return False
+
+
 async def get_xml_data(hass: HomeAssistant, url: str, port: int, password: str, tls: bool, endpoint: str):
     """Fetch XML data asynchronously using aiohttp."""
 
