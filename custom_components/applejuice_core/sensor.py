@@ -100,12 +100,45 @@ SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
         value_fn=lambda sensor: sensor.coordinator.data.find("information").attrib.get("openconnections", "0"),
     ),
     AppleJuiceBaseSensorDescription(
-        key="downloads",
-        name="Downloads",
+        key="downloads_total",
+        name="Downloads Total",
         icon="mdi:download-multiple",
         state_class=SensorStateClass.TOTAL,
         subscriptions=[("download")],
         value_fn=lambda sensor: len(sensor.coordinator.data.findall("download")),
+    ),
+    AppleJuiceBaseSensorDescription(
+        key="downloads_active",
+        name="Downloads Active",
+        icon="mdi:download-multiple",
+        state_class=SensorStateClass.TOTAL,
+        subscriptions=[("download")],
+        value_fn=lambda sensor: len([
+            d for d in sensor.coordinator.data.findall("download")
+            if d.attrib.get("status") == "0"
+        ]),
+    ),
+    AppleJuiceBaseSensorDescription(
+        key="downloads_ready",
+        name="Downloads ready",
+        icon="mdi:download-multiple",
+        state_class=SensorStateClass.TOTAL,
+        subscriptions=[("download")],
+        value_fn=lambda sensor: len([
+            d for d in sensor.coordinator.data.findall("download")
+            if d.attrib.get("status") == "14"
+        ]),
+    ),
+    AppleJuiceBaseSensorDescription(
+        key="downloads_paused",
+        name="Downloads paused",
+        icon="mdi:download-multiple",
+        state_class=SensorStateClass.TOTAL,
+        subscriptions=[("download")],
+        value_fn=lambda sensor: len([
+            d for d in sensor.coordinator.data.findall("download")
+            if d.attrib.get("status") == "18"
+        ]),
     ),
     AppleJuiceBaseSensorDescription(
         key="uploads",
