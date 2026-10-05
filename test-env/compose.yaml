@@ -1,0 +1,67 @@
+name: applejuice-ha-test
+
+services:
+  core-ha:
+    image: eclipse-temurin:25-jre-alpine
+    pull_policy: never
+    working_dir: /work
+    restart: "no"
+    command:
+      - /bin/sh
+      - -ec
+      - mkdir -p /work/appleJuice/share /work/appleJuice/incoming /work/appleJuice/temp;
+        cp /seed/servers.xml /work/appleJuice/server.xml;
+        cp /seed/settings.xml /work/appleJuice/settings.xml;
+        exec java -Xmx256m -Duser.home=/work -jar /runtime/core.jar --nogui
+    volumes:
+      - ../../isolated-network/runtime:/runtime:ro
+      - ../../isolated-network/core/servers-b.xml:/seed/servers.xml:ro
+      - ./core-ha.xml:/seed/settings.xml:ro
+    networks:
+      isolated:
+        ipv4_address: 198.51.100.30
+
+  homeassistant:
+    image: ghcr.io/home-assistant/home-assistant:stable
+    pull_policy: never
+    restart: "no"
+    depends_on:
+      - core-ha
+    ports:
+      - "127.0.0.1:8123:8123"
+    volumes:
+      - ha-config:/config
+      - ./configuration.yaml:/config/configuration.yaml:ro
+      - ../custom_components/applejuice_core:/config/custom_components/applejuice_core:ro
+      - ..:/src:ro
+    networks:
+      default: {}
+      isolated:
+        ipv4_address: 198.51.100.31
+
+  homeassistant-beta:
+    profiles: ["beta"]
+    image: ghcr.io/home-assistant/home-assistant:beta
+    pull_policy: never
+    restart: "no"
+    depends_on:
+      - core-ha
+    ports:
+      - "127.0.0.1:8124:8123"
+    volumes:
+      - ha-config-beta:/config
+      - ./configuration.yaml:/config/configuration.yaml:ro
+      - ../custom_components/applejuice_core:/config/custom_components/applejuice_core:ro
+    networks:
+      default: {}
+      isolated:
+        ipv4_address: 198.51.100.32
+
+volumes:
+  ha-config:
+  ha-config-beta:
+
+networks:
+  isolated:
+    external: true
+    name: applejuice-isolated_isolated

@@ -1,0 +1,14 @@
+default_config:
+
+homeassistant:
+  name: appleJuice Test
+  currency: EUR
+  time_zone: Europe/Berlin
+  country: DE
+  language: de
+  unit_system: metric
+
+logger:
+  default: warning
+  logs:
+    custom_components.applejuice_core: debug

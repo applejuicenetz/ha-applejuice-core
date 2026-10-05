@@ -33,6 +33,28 @@ appleJuice Core Integration für Home Assistant.
 
 10. Gib `Host/IP`, `XML-Port` und das appleJuice Core `Passwort` ein und klicke auf `OK`
 
+## Entities
+
+| Typ | Entities |
+|---|---|
+| Sensoren | Credits, Session Up-/Download, Geschwindigkeit, Verbindungen, Downloads, Uploads, Share, Netzwerk |
+| Binäre Sensoren | Firewall, Paused |
+| Buttons | Exit Core, Clean Download List, Share Check (nur Cores neuer als `0.35.185.93`) |
+| Zahlen | Max Upload, Max Download, Speed per Slot, Max Connections, Max New Connections per Turn, Max Sources per File |
+| Schalter | Auto Connect |
+| Text | Nickname |
+
+Upload, Download und Speed per Slot werden in KB/s angezeigt. Ports und Verzeichnisse lassen sich nicht ändern.
+
+Voraussetzung: Home Assistant 2025.8.0 oder neuer. Passwort, Host und Port lassen sich über `Neu konfigurieren` ändern. Wird das Passwort abgelehnt, startet Home Assistant die erneute Authentifizierung.
+
+## Tests
+
+```bash
+pip install -r requirements_test.txt
+pytest
+```
+
 ## debugging
 
 in der `configuration.yaml` kannst du das Logging-Level für die `appleJuice Core` Integration anpassen:

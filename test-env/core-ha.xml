@@ -1,0 +1,16 @@
+<?xml version="1.0"?>
+<client>
+    <nick>isolated-core-ha</nick>
+    <port>9850</port>
+    <xmlport>9851</xmlport>
+    <autoconnect>true</autoconnect>
+    <maxupload>102400</maxupload>
+    <speedperslot>50</speedperslot>
+    <maxdownload>0</maxdownload>
+    <password>925cc8d2953eba624b2bfedf91a91613</password>
+    <incomingdirectory>/work/appleJuice/incoming/</incomingdirectory>
+    <temporarydirectory>/work/appleJuice/temp/</temporarydirectory>
+    <share>
+        <directory name="/work/appleJuice/share" sharemode="subdirectory"/>
+    </share>
+</client>
