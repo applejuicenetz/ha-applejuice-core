@@ -1,15 +1,12 @@
-import logging
-from dataclasses import dataclass
+"""Sensor platform for the appleJuice Core integration."""
+
+from __future__ import annotations
+
 from collections.abc import Callable
-from datetime import datetime
-
-from homeassistant.const import (
-    EntityCategory,
-    UnitOfInformation,
-    UnitOfDataRate,
-)
-
-from homeassistant.core import callback
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
+from xml.etree.ElementTree import Element
 
 from homeassistant.components.sensor import (
     SensorDeviceClass,
@@ -17,264 +14,240 @@ from homeassistant.components.sensor import (
     SensorEntityDescription,
     SensorStateClass,
 )
+from homeassistant.const import EntityCategory, UnitOfDataRate, UnitOfInformation
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
-from .entity import BaseAppleJuiceCoreEntity, BaseAppleJuiceNetworkEntity
+from .coordinator import AppleJuiceConfigEntry
+from .entity import AppleJuiceCoreEntity, AppleJuiceNetworkEntity
 
-_LOGGER = logging.getLogger(__name__)
+PARALLEL_UPDATES = 0
 
-
-@dataclass
-class AppleJuiceBaseSensorDescription(SensorEntityDescription):
-    """Class describing appleJuice Core sensor entities."""
-
-    key: str
-    name: str
-    value_fn: Callable | None = None
-    sensor_name: str | None = None
-    icon: str | None = None
-    unit: str | None = None
-    state_class: str | None = None
-    device_class: str | None = None
-    subscriptions: list | None = None
-    entity_category: str | None = None
+GB = 1024**3
+MB = 1024**2
 
 
-SENSORS_CORE: tuple[AppleJuiceBaseSensorDescription, ...] = [
-    AppleJuiceBaseSensorDescription(
+def _attr(data: Element, tag: str, name: str, default: str = "0") -> str:
+    """Attribute of a top-level tag."""
+    node = data.find(tag)
+    return node.attrib.get(name, default) if node is not None else default
+
+
+def _info_gb(name: str) -> Callable[[Element], float]:
+    return lambda data: round(int(_attr(data, "information", name)) / GB, 2)
+
+
+def _info_mb(name: str) -> Callable[[Element], float]:
+    return lambda data: round(int(_attr(data, "information", name)) / MB, 2)
+
+
+def _downloads_with_status(status: str) -> Callable[[Element], int]:
+    return lambda data: sum(1 for d in data.findall("download") if d.attrib.get("status") == status)
+
+
+def _connected_server(data: Element) -> str | None:
+    server_id = _attr(data, "networkinfo", "connectedwithserverid", "")
+    server = data.find(f"server[@id='{server_id}']") if server_id else None
+    return server.attrib.get("host") if server is not None else None
+
+
+def _connected_since(data: Element) -> datetime | None:
+    millis = int(_attr(data, "networkinfo", "connectedsince"))
+    return datetime.fromtimestamp(millis / 1000.0, tz=UTC) if millis else None
+
+
+def _shares(data: Element) -> list[Element]:
+    node = data.find("shares")
+    return node.findall("share") if node is not None else []
+
+
+@dataclass(frozen=True, kw_only=True)
+class AppleJuiceSensorDescription(SensorEntityDescription):
+    """Describes an appleJuice sensor."""
+
+    value_fn: Callable[[Element], Any]
+
+
+SENSORS_CORE: tuple[AppleJuiceSensorDescription, ...] = (
+    AppleJuiceSensorDescription(
         key="credits",
         name="Credits",
         icon="mdi:cash",
-        unit=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.TOTAL_INCREASING,
-        subscriptions=[("information", "credits")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("credits", "0")) / (1024 ** 3), 2),
+        value_fn=_info_gb("credits"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="sessionupload",
         name="Session Upload",
         icon="mdi:upload-network",
-        unit=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
-        subscriptions=[("information", "sessionupload")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessionupload", "0")) / (1024 ** 3), 2),
+        value_fn=_info_gb("sessionupload"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="sessiondownload",
         name="Session Download",
         icon="mdi:download-network",
-        unit=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
-        subscriptions=[("information", "sessiondownload")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("sessiondownload", "0")) / (1024 ** 3), 2),
+        value_fn=_info_gb("sessiondownload"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="uploadspeed",
         name="Upload Speed",
         icon="mdi:upload",
-        unit=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
-        subscriptions=[("information", "uploadspeed")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("uploadspeed", "0")) / (1024 ** 2), 2),
+        value_fn=_info_mb("uploadspeed"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="downloadspeed",
         name="Download Speed",
         icon="mdi:download",
-        unit=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
-        subscriptions=[("information", "downloadspeed")],
-        value_fn=lambda sensor: round(int(sensor.coordinator.data.find("information").attrib.get("downloadspeed", "0")) / (1024 ** 2), 2),
+        value_fn=_info_mb("downloadspeed"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="openconnections",
         name="Connections",
         icon="mdi:connection",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("information", "openconnections")],
-        value_fn=lambda sensor: sensor.coordinator.data.find("information").attrib.get("openconnections", "0"),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: int(_attr(data, "information", "openconnections")),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="downloads_total",
         name="Downloads Total",
         icon="mdi:download-multiple",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("download")],
-        value_fn=lambda sensor: len(sensor.coordinator.data.findall("download")),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: len(data.findall("download")),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="downloads_active",
         name="Downloads Active",
         icon="mdi:download-multiple",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("download")],
-        value_fn=lambda sensor: len([
-            d for d in sensor.coordinator.data.findall("download")
-            if d.attrib.get("status") == "0"
-        ]),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_downloads_with_status("0"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="downloads_ready",
         name="Downloads ready",
         icon="mdi:download-multiple",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("download")],
-        value_fn=lambda sensor: len([
-            d for d in sensor.coordinator.data.findall("download")
-            if d.attrib.get("status") == "14"
-        ]),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_downloads_with_status("14"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="downloads_paused",
         name="Downloads paused",
         icon="mdi:download-multiple",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("download")],
-        value_fn=lambda sensor: len([
-            d for d in sensor.coordinator.data.findall("download")
-            if d.attrib.get("status") == "18"
-        ]),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_downloads_with_status("18"),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="uploads",
         name="Uploads",
         icon="mdi:upload-multiple",
-        device_class=SensorStateClass.TOTAL,
-        subscriptions=[("upload")],
-        value_fn=lambda sensor: len(sensor.coordinator.data.findall("upload")),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: len(data.findall("upload")),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="connected_server_name",
         name="Connected Server",
         icon="mdi:server-network",
-        device_class=SensorStateClass.TOTAL,
-        subscriptions=[("networkinfo")],
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda sensor: sensor.coordinator.data.find("server[@id='{}']".format(sensor.coordinator.data.find("networkinfo").attrib.get("connectedwithserverid", ""))).attrib.get("host", "Unknown"),
+        value_fn=_connected_server,
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="connectedsince",
         name="Connected Since",
         icon="mdi:clock-outline",
-        device_class=SensorDeviceClass.DATE,
-        subscriptions=[("networkinfo", "connectedsince")],
+        device_class=SensorDeviceClass.TIMESTAMP,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda sensor: datetime.fromtimestamp(int(sensor.coordinator.data.find("networkinfo").attrib.get("connectedsince", "0")) / 1000.0),
+        value_fn=_connected_since,
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="shared_files",
         name="Shared Files",
         icon="mdi:folder-file-outline",
-        device_class=SensorStateClass.TOTAL,
-        subscriptions=[("shares")],
-        value_fn=lambda sensor: len(sensor.coordinator.data.find("shares").findall("share")),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: len(_shares(data)),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="shared_size",
         name="Share Size",
         icon="mdi:file-outline",
-        unit=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
-        subscriptions=[("shares")],
-        value_fn=lambda sensor: round(sum(int(share.attrib.get("size", 0)) for share in sensor.coordinator.data.find("shares").findall("share")) / (1024 ** 3), 2),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: round(sum(int(s.attrib.get("size", 0)) for s in _shares(data)) / GB, 2),
     ),
-]
+)
 
-SENSORS_NETWORK: tuple[AppleJuiceBaseSensorDescription, ...] = [
-    AppleJuiceBaseSensorDescription(
+SENSORS_NETWORK: tuple[AppleJuiceSensorDescription, ...] = (
+    AppleJuiceSensorDescription(
         key="users",
         name="Users",
         icon="mdi:account-group",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("networkinfo", "users")],
-        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("users", "0"),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: int(_attr(data, "networkinfo", "users")),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="global_files",
         name="Global Files",
         icon="mdi:folder-file-outline",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("networkinfo", "files")],
-        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("files", "0"),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: int(_attr(data, "networkinfo", "files")),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="global_file_size",
         name="Global Size",
-        unit=UnitOfInformation.TERABYTES,
+        native_unit_of_measurement=UnitOfInformation.TERABYTES,
         device_class=SensorDeviceClass.DATA_SIZE,
-        subscriptions=[("networkinfo", "filesize")],
-        value_fn=lambda sensor: round(float(sensor.coordinator.data.find("networkinfo").attrib.get("filesize", "0").replace(",", ".")) / (1024 ** 2), 2),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: round(float(_attr(data, "networkinfo", "filesize").replace(",", ".")) / MB, 2),
     ),
-    AppleJuiceBaseSensorDescription(
+    AppleJuiceSensorDescription(
         key="known_servers",
         name="Known Servers",
         icon="mdi:server",
-        state_class=SensorStateClass.TOTAL,
-        subscriptions=[("server")],
-        value_fn=lambda sensor: len(sensor.coordinator.data.findall("server")),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=lambda data: len(data.findall("server")),
     ),
-]
+)
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    """Set sensor platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+class AppleJuiceCoreSensor(AppleJuiceCoreEntity, SensorEntity):
+    """Sensor of the Core device."""
 
-    await async_setup_basic_sensor(coordinator, entry, async_add_entities)
+    entity_description: AppleJuiceSensorDescription
+
+    @property
+    def native_value(self) -> Any:
+        """Current value, None if the data is malformed."""
+        try:
+            return self.entity_description.value_fn(self.coordinator.data)
+        except (ValueError, TypeError, AttributeError):
+            return None
 
 
-async def async_setup_basic_sensor(coordinator, entry, async_add_entities):
-    """Set basic sensor platform."""
+class AppleJuiceNetworkSensor(AppleJuiceNetworkEntity, AppleJuiceCoreSensor):
+    """Sensor of the Network device."""
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: AppleJuiceConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up sensor platform."""
+    coordinator = entry.runtime_data
     async_add_entities(
-        [AppleJuiceCoreSensor(coordinator, entry, desc) for desc in SENSORS_CORE] +
-        [AppleJuiceNetworkSensor(coordinator, entry, desc) for desc in SENSORS_NETWORK]
+        [AppleJuiceCoreSensor(coordinator, desc) for desc in SENSORS_CORE]
+        + [AppleJuiceNetworkSensor(coordinator, desc) for desc in SENSORS_NETWORK]
     )
-
-
-class AppleJuiceCoreSensor(BaseAppleJuiceCoreEntity, SensorEntity):
-    """AppleJuiceCoreSensor Sensor class."""
-
-    def __init__(self, coordinator, entry, description):
-        """Init."""
-        super().__init__(coordinator, entry)
-        self.coordinator = coordinator
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_name = description.name
-        self._attr_has_entity_name = True
-        self.entity_description = description
-        self._attr_native_value = description.value_fn(self)
-        self._attr_icon = description.icon
-        self._attr_native_unit_of_measurement = description.unit
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._attr_native_value = self.entity_description.value_fn(self)
-        self.async_write_ha_state()
-
-
-class AppleJuiceNetworkSensor(BaseAppleJuiceNetworkEntity, SensorEntity):
-    """AppleJuiceCoreSensor Sensor class."""
-
-    def __init__(self, coordinator, entry, description):
-        """Init."""
-        super().__init__(coordinator, entry)
-        self.coordinator = coordinator
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_name = description.name
-        self._attr_has_entity_name = True
-        self.entity_description = description
-        self._attr_native_value = description.value_fn(self)
-        self._attr_icon = description.icon
-        self._attr_native_unit_of_measurement = description.unit
-
-    @callback
-    def _handle_coordinator_update(self) -> None:
-        """Handle updated data from the coordinator."""
-        self._attr_native_value = self.entity_description.value_fn(self)
-        self.async_write_ha_state()

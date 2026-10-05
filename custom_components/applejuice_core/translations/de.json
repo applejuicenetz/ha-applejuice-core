@@ -2,10 +2,27 @@
   "config": {
     "step": {
       "user": {
-        "description": "appleJuice Core Verbindungs-information",
+        "description": "appleJuice Core Verbindungs-Information",
         "data": {
           "url": "Host/IP",
           "port": "XML-Port",
+          "password": "Passwort",
+          "tls": "Verwende TLS (sofern Reverse Proxy in Verwendung ist)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Erneut authentifizieren",
+        "description": "Das Passwort für {host} wurde abgelehnt. Gib das aktuelle Core-Passwort ein.",
+        "data": {
+          "password": "Passwort"
+        }
+      },
+      "reconfigure": {
+        "description": "Verbindung zum appleJuice Core ändern",
+        "data": {
+          "url": "Host/IP",
+          "port": "XML-Port",
+          "password": "Passwort",
           "tls": "Verwende TLS (sofern Reverse Proxy in Verwendung ist)"
         }
       }
@@ -13,7 +30,14 @@
     "error": {
       "host_error": "Ungültiger Host. Enthält nicht \"http://\", \"https://\", oder einen abschließenden Schrägstrich.",
       "port_error": "Ungültiger Port, muss eine Zahl zwischen 1 und 65535 sein.",
-      "core_connection_error": "Verbindung fehlgeschlagen."
+      "core_connection_error": "Verbindung fehlgeschlagen.",
+      "invalid_auth": "Ungültiges Passwort."
+    },
+    "abort": {
+      "already_configured": "Dieser Core ist bereits eingerichtet.",
+      "reauth_successful": "Erneute Authentifizierung erfolgreich.",
+      "reconfigure_successful": "Verbindung aktualisiert.",
+      "wrong_core": "Host und Port dürfen nicht auf einen anderen Core zeigen."
     }
   },
   "options": {
@@ -24,6 +48,17 @@
           "polling_rate": "Integrations Abfrage Rate (s)"
         }
       }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Verbindung zum appleJuice Core fehlgeschlagen."
+    },
+    "invalid_auth": {
+      "message": "Der appleJuice Core hat das Passwort abgelehnt."
+    },
+    "function_failed": {
+      "message": "Core-Funktion {function} fehlgeschlagen."
     }
   }
 }

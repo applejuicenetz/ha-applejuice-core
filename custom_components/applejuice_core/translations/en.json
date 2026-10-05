@@ -6,6 +6,23 @@
         "data": {
           "url": "Host/IP",
           "port": "XML-Port",
+          "password": "Password",
+          "tls": "Uses TLS (if reverse proxy is in use)"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Reauthenticate",
+        "description": "The password for {host} was rejected. Enter the current Core password.",
+        "data": {
+          "password": "Password"
+        }
+      },
+      "reconfigure": {
+        "description": "Change the connection to the appleJuice Core",
+        "data": {
+          "url": "Host/IP",
+          "port": "XML-Port",
+          "password": "Password",
           "tls": "Uses TLS (if reverse proxy is in use)"
         }
       }
@@ -13,7 +30,14 @@
     "error": {
       "host_error": "Invalid host. Don't include \"http://\", \"https://\", or a trailing slash.",
       "port_error": "Invalid port, must be a number between 1 and 65535.",
-      "core_connection_error": "Failed to connect."
+      "core_connection_error": "Failed to connect.",
+      "invalid_auth": "Invalid password."
+    },
+    "abort": {
+      "already_configured": "This Core is already configured.",
+      "reauth_successful": "Reauthentication successful.",
+      "reconfigure_successful": "Connection updated.",
+      "wrong_core": "Host and port must not point to a different Core."
     }
   },
   "options": {
@@ -24,6 +48,17 @@
           "polling_rate": "Integration polling rate (s)"
         }
       }
+    }
+  },
+  "exceptions": {
+    "cannot_connect": {
+      "message": "Cannot connect to the appleJuice Core."
+    },
+    "invalid_auth": {
+      "message": "The appleJuice Core rejected the password."
+    },
+    "function_failed": {
+      "message": "Core function {function} failed."
     }
   }
 }

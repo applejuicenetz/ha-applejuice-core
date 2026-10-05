@@ -1,96 +1,87 @@
+"""Button platform for the appleJuice Core integration."""
+
+from __future__ import annotations
+
 from dataclasses import dataclass
+
 from homeassistant.components.button import ButtonEntity, ButtonEntityDescription
-from homeassistant.helpers.entity import EntityCategory
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
+from .api import AppleJuiceError, parse_version
 from .const import DOMAIN, SHARECHECK_AFTER_CORE_VERSION
-from .api import call_function, parse_version
-from .entity import BaseAppleJuiceCoreEntity
+from .coordinator import AppleJuiceConfigEntry
+from .entity import AppleJuiceCoreEntity
+
+PARALLEL_UPDATES = 1
 
 
-@dataclass
-class AppleJuiceCoreButtonDescription(ButtonEntityDescription):
-    """Beschreibung für appleJuice Core Button-Entities."""
-    key: str
-    name: str
-    sensor_name: str | None = None
-    subscriptions: list | None = None
-    icon: str | None = None
-    device_class: str | None = None
-    entity_category: str | None = None
-    method: str | None = None
+@dataclass(frozen=True, kw_only=True)
+class AppleJuiceButtonDescription(ButtonEntityDescription):
+    """Describes a core function button."""
+
+    method: str
     after_core_version: str | None = None
 
 
-class AppleJuiceCoreButton(BaseAppleJuiceCoreEntity, ButtonEntity):
-    """aAppleJuiceCoreButton class."""
-
-    def __init__(self, coordinator, entry, description):
-        """Init."""
-        super().__init__(coordinator, entry)
-        self.coordinator = coordinator
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_name = description.name
-        self._attr_has_entity_name = True
-        self.entity_description = description
-        self._attr_device_class = description.device_class
-        self._attr_icon = description.icon
-        self._attr_entity_category = description.entity_category
-
-    async def async_press(self):
-        await call_function(
-            self.coordinator.hass,
-            self.config_entry.data.get("url"),
-            self.config_entry.data.get("port"),
-            self.config_entry.data.get("password"),
-            self.config_entry.data.get("tls"),
-            self.entity_description.method
-        )
-
-
-BUTTONS: tuple[AppleJuiceCoreButtonDescription, ...] = (
-    AppleJuiceCoreButtonDescription(
+BUTTONS: tuple[AppleJuiceButtonDescription, ...] = (
+    AppleJuiceButtonDescription(
         key="exitcore",
         name="Exit Core",
         icon="mdi:exit-run",
-        device_class=None,
         entity_category=EntityCategory.CONFIG,
         method="exitcore",
     ),
-    AppleJuiceCoreButtonDescription(
+    AppleJuiceButtonDescription(
         key="sharecheck",
         name="Share Check",
         icon="mdi:folder-search",
-        device_class=None,
         entity_category=EntityCategory.CONFIG,
         method="sharecheck",
         after_core_version=SHARECHECK_AFTER_CORE_VERSION,
     ),
-    AppleJuiceCoreButtonDescription(
+    AppleJuiceButtonDescription(
         key="cleandownloadlist",
         name="Clean Download List",
         icon="mdi:playlist-remove",
-        device_class=None,
         entity_category=EntityCategory.CONFIG,
         method="cleandownloadlist",
     ),
 )
 
 
-async def async_setup_entry(hass, entry, async_add_entities):
-    """Set button platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
+class AppleJuiceButton(AppleJuiceCoreEntity, ButtonEntity):
+    """Button calling a core function."""
 
-    await async_setup_basic_sensor(coordinator, entry, async_add_entities)
+    entity_description: AppleJuiceButtonDescription
+
+    async def async_press(self) -> None:
+        """Call the function on the core."""
+        try:
+            await self.coordinator.client.call_function(self.entity_description.method)
+        except AppleJuiceError as err:
+            raise HomeAssistantError(
+                translation_domain=DOMAIN,
+                translation_key="function_failed",
+                translation_placeholders={"function": self.entity_description.method},
+            ) from err
 
 
-async def async_setup_basic_sensor(coordinator, entry, async_add_entities):
-    """Set button platform."""
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: AppleJuiceConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up button platform."""
+    coordinator = entry.runtime_data
     core_version = parse_version(coordinator.version)
 
-    def supported(desc):
+    def supported(desc: AppleJuiceButtonDescription) -> bool:
         if desc.after_core_version is None:
             return True
         # Nur anzeigen, wenn Core-Version strikt größer als after_core_version ist.
         return core_version is not None and core_version > parse_version(desc.after_core_version)
 
-    async_add_entities([AppleJuiceCoreButton(coordinator, entry, desc) for desc in BUTTONS if supported(desc)])
+    async_add_entities(AppleJuiceButton(coordinator, desc) for desc in BUTTONS if supported(desc))

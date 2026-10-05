@@ -1,183 +1,62 @@
 """appleJuice Core integration for Home Assistant."""
 
-import asyncio
-import logging
-from datetime import timedelta
-import xml.etree.ElementTree as ET
-import voluptuous as vol
+from __future__ import annotations
 
-from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import ConfigEntryNotReady
 from homeassistant.helpers import device_registry as dr
-from homeassistant.helpers import config_validation as cv
-from homeassistant.helpers.typing import ConfigType
-from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
-from .const import (
-    DOMAIN,
-    CONF_URL,
-    CONF_PORT,
-    CONF_PASSWORD,
-    CONF_TLS,
-    PLATFORMS,
-    CONF_OPTION_POLLING_RATE,
-)
+from homeassistant.helpers.aiohttp_client import async_get_clientsession
 
-from .api import get_xml_data
-
-SCAN_INTERVAL = timedelta(seconds=30)
-
-_LOGGER = logging.getLogger(__name__)
-
-_LOGGER.debug("loading appleJuice Core init")
-
-CONFIG_SCHEMA = vol.Schema(
-    {
-        DOMAIN: cv.empty_config_schema,
-    },
-    extra=vol.ALLOW_EXTRA,
-)
-
-async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
-    """Set up the appleJuice Core integration."""
-    hass.data.setdefault(DOMAIN, {})
-    return True
+from .api import AppleJuiceClient
+from .const import DOMAIN, CONF_PASSWORD, CONF_PORT, CONF_TLS, CONF_URL, PLATFORMS
+from .coordinator import AppleJuiceConfigEntry, AppleJuiceCoordinator
 
 
-async def async_reload_entry(hass: HomeAssistant, entry: ConfigEntry) -> None:
-    """Reload config entry."""
-    hass.data[DOMAIN][entry.entry_id].config_entry = entry
-    await hass.config_entries.async_reload(entry.entry_id)
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Handle removal of an entry."""
-    if await hass.config_entries.async_forward_entry_unload(entry, "sensor"):
-        hass.data[DOMAIN].pop(entry.entry_id)
-        return True
-    return False
-
-
-async def async_unload_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
-    """Handle removal of an entry."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-    unloaded = all(
-        await asyncio.gather(
-            *[
-                hass.config_entries.async_forward_entry_unload(entry, platform)
-                for platform in PLATFORMS
-                if platform in coordinator.platforms
-            ]
-        )
+async def async_setup_entry(hass: HomeAssistant, entry: AppleJuiceConfigEntry) -> bool:
+    """Set up appleJuice Core from a config entry."""
+    client = AppleJuiceClient(
+        async_get_clientsession(hass),
+        entry.data[CONF_URL],
+        entry.data[CONF_PORT],
+        entry.data[CONF_PASSWORD],
+        entry.data.get(CONF_TLS, False),
     )
-    if unloaded:
-        hass.data[DOMAIN].pop(entry.entry_id)
-
-    return unloaded
-
-
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry):
-    """Set up this integration using UI."""
-
-    global SCAN_INTERVAL
-
-    if hass.data.get(DOMAIN) is None:
-        hass.data.setdefault(DOMAIN, {})
-
-    if entry.options.get(CONF_OPTION_POLLING_RATE) is not None:
-        SCAN_INTERVAL = timedelta(seconds=entry.options.get(CONF_OPTION_POLLING_RATE))
-    else:
-        SCAN_INTERVAL = timedelta(seconds=30)
-
-    coordinator = AppleJuiceCoordinator(hass, config_entry=entry)
-
+    coordinator = AppleJuiceCoordinator(hass, entry, client)
     await coordinator.async_config_entry_first_refresh()
 
-    await coordinator.async_refresh()
-
-    if not coordinator.last_update_success:
-        raise ConfigEntryNotReady
-
-    hass.data[DOMAIN][entry.entry_id] = coordinator
-
-    for platform in PLATFORMS:
-        coordinator.platforms.append(platform)
-
+    entry.runtime_data = coordinator
+    _async_register_devices(hass, entry, coordinator)
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
-
-    entry.async_on_unload(entry.add_update_listener(async_reload_entry))
-
     return True
 
 
-class AppleJuiceCoordinator(DataUpdateCoordinator):
-    """Handles periodic XML data retrieval."""
-
-    def __init__(self, hass: HomeAssistant, config_entry: ConfigEntry):
-        """Initialize the coordinator with update interval settings."""
-        self.system = None
-        self.version = None
-        self.platforms = []
-        self.updaters = [
-            _async_update_modified,
-            _async_update_share,
-        ]
-        self.hass = hass
-        self.config_entry = config_entry
-
-        self.name = f"appleJuice Core {config_entry.data.get(CONF_URL)}:{config_entry.data.get(CONF_PORT)}"
-
-        super().__init__(hass, _LOGGER, name=self.name, update_interval=SCAN_INTERVAL, always_update=False)
-
-    async def _async_setup(self):
-        """Fetch general device information (version and system)."""
-        xml_data = await get_xml_data(self.hass,
-                                      self.config_entry.data.get(CONF_URL),
-                                      self.config_entry.data.get(CONF_PORT),
-                                      self.config_entry.data.get(CONF_PASSWORD),
-                                      self.config_entry.data.get(CONF_TLS),
-                                      "/xml/information.xml")
-
-        if xml_data is not None:
-            general_info = xml_data.find("generalinformation")
-            if general_info is not None:
-                general_info = xml_data.find("generalinformation")
-                self.version = general_info.find("version").text if general_info.find("version") is not None else "Unknown"
-                self.system = general_info.find("system").text if general_info.find("system") is not None else "Unknown"
-                _LOGGER.debug("version %s, system %s", self.version, self.system)
-            else:
-                _LOGGER.debug("version and system not found in XML data")
-        else:
-            _LOGGER.debug("/xml/information.xml xml data not found")
-
-    async def _async_update_data(self):
-        """Update data via library."""
-        combined_data = ET.Element("root")
-
-        for updater in self.updaters:
-            xml_data = await updater(self)
-            if xml_data is not None:
-                for child in xml_data:
-                    combined_data.append(child)
-
-        return combined_data
+async def async_unload_entry(hass: HomeAssistant, entry: AppleJuiceConfigEntry) -> bool:
+    """Unload a config entry."""
+    return await hass.config_entries.async_unload_platforms(entry, PLATFORMS)
 
 
-async def _async_update_modified(self):
-    """Fetch XML data asynchronously."""
-    return await get_xml_data(self.hass,
-                              self.config_entry.data.get(CONF_URL),
-                              self.config_entry.data.get(CONF_PORT),
-                              self.config_entry.data.get(CONF_PASSWORD),
-                              self.config_entry.data.get(CONF_TLS),
-                              "/xml/modified.xml")
+def _async_register_devices(hass: HomeAssistant, entry: AppleJuiceConfigEntry, coordinator: AppleJuiceCoordinator) -> None:
+    """Register Core and Network device and link the Network to the Core.
 
-
-async def _async_update_share(self):
-    """Fetch XML share data asynchronously."""
-    return await get_xml_data(self.hass,
-                              self.config_entry.data.get(CONF_URL),
-                              self.config_entry.data.get(CONF_PORT),
-                              self.config_entry.data.get(CONF_PASSWORD),
-                              self.config_entry.data.get(CONF_TLS),
-                              "/xml/share.xml")
+    The link is set via the device id, because `via_device` in DeviceInfo is deprecated.
+    """
+    registry = dr.async_get(hass)
+    core = registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, entry.entry_id)},
+        name=coordinator.name,
+        model="appleJuice Core",
+        manufacturer="appleJuiceNETZ",
+        sw_version=coordinator.version,
+        hw_version=coordinator.system,
+        entry_type=dr.DeviceEntryType.SERVICE,
+    )
+    network = registry.async_get_or_create(
+        config_entry_id=entry.entry_id,
+        identifiers={(DOMAIN, f"{entry.entry_id}_network")},
+        name="appleJuice Network",
+        model="appleJuice Network",
+        manufacturer="appleJuiceNETZ",
+        entry_type=dr.DeviceEntryType.SERVICE,
+    )
+    if network.via_device_id != core.id:
+        registry.async_update_device(network.id, via_device_id=core.id)

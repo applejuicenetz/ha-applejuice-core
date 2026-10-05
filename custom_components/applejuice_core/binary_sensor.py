@@ -1,101 +1,76 @@
-"""Binary sensors platform for appleJuice Core integration."""
-from typing import Callable
+"""Binary sensor platform for the appleJuice Core integration."""
 
-import logging
+from __future__ import annotations
+
+from collections.abc import Callable
 from dataclasses import dataclass
-
-from homeassistant.const import (
-    EntityCategory,
-)
+from xml.etree.ElementTree import Element
 
 from homeassistant.components.binary_sensor import (
     BinarySensorDeviceClass,
     BinarySensorEntity,
     BinarySensorEntityDescription,
 )
+from homeassistant.const import EntityCategory
+from homeassistant.core import HomeAssistant
+from homeassistant.helpers.entity_platform import AddConfigEntryEntitiesCallback
 
-from .const import DOMAIN
-from .entity import BaseAppleJuiceCoreEntity
+from .coordinator import AppleJuiceConfigEntry
+from .entity import AppleJuiceCoreEntity
 
-_LOGGER = logging.getLogger(__name__)
-
-
-@dataclass
-class AppleJuiceCoreBinarySensorDescription(BinarySensorEntityDescription):
-    """Class describing appleJuice Core binary_sensor entities."""
-
-    key: str
-    name: str
-    value_fn: Callable | None = None
-    sensor_name: str | None = None
-    subscriptions: list | None = None
-    icon: str | None = None
-    device_class: str | None = None
-    entity_category: str | None = None
+PARALLEL_UPDATES = 0
 
 
-BINARY_SENSORS: tuple[AppleJuiceCoreBinarySensorDescription, ...] = [
-    AppleJuiceCoreBinarySensorDescription(
+def _networkinfo_flag(name: str, default: str) -> Callable[[Element], bool]:
+    def value(data: Element) -> bool:
+        node = data.find("networkinfo")
+        return (node.attrib.get(name, default) if node is not None else default) == "true"
+
+    return value
+
+
+@dataclass(frozen=True, kw_only=True)
+class AppleJuiceBinarySensorDescription(BinarySensorEntityDescription):
+    """Describes an appleJuice binary sensor."""
+
+    value_fn: Callable[[Element], bool]
+
+
+BINARY_SENSORS: tuple[AppleJuiceBinarySensorDescription, ...] = (
+    AppleJuiceBinarySensorDescription(
         key="firewalled",
-        sensor_name="firewalled",
         name="Firewall",
-        subscriptions=[("networkinfo", "firewalled")],
         icon="mdi:security",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("firewalled", "false") == "true",
-
+        value_fn=_networkinfo_flag("firewalled", "false"),
     ),
-    AppleJuiceCoreBinarySensorDescription(
+    AppleJuiceBinarySensorDescription(
         key="paused",
-        sensor_name="paused",
         name="Paused",
-        subscriptions=[("networkinfo", "paused")],
         icon="mdi:pause-circle",
         device_class=BinarySensorDeviceClass.PROBLEM,
         entity_category=EntityCategory.DIAGNOSTIC,
-        value_fn=lambda sensor: sensor.coordinator.data.find("networkinfo").attrib.get("paused", "true") == "true",
-
-    )
-]
-
-
-async def async_setup_entry(hass, entry, async_add_devices):
-    """Set up the binary_sensor platform."""
-    coordinator = hass.data[DOMAIN][entry.entry_id]
-
-    await async_setup_update_binary_sensors(coordinator, entry, async_add_devices)
+        value_fn=_networkinfo_flag("paused", "true"),
+    ),
+)
 
 
-async def async_setup_update_binary_sensors(coordinator, entry, async_add_entities):
-    """Set Machine Update binary sensor."""
+class AppleJuiceBinarySensor(AppleJuiceCoreEntity, BinarySensorEntity):
+    """Binary sensor of the Core device."""
 
-    async_add_entities([
-        AppleJuiceCoreBinarySensor(coordinator, entry, desc) for desc in BINARY_SENSORS
-    ])
-
-
-class AppleJuiceCoreBinarySensor(BaseAppleJuiceCoreEntity, BinarySensorEntity):
-    """appleJuice Core binary_sensor class."""
-
-    def __init__(
-            self,
-            coordinator,
-            entry,
-            description,
-    ) -> None:
-        """Initialize the binary_sensor class."""
-        _LOGGER.debug("loading appleJuice Core binary_sensor")
-        super().__init__(coordinator, entry)
-        self.entity_description = description
-        self.sensor_name = description.sensor_name
-        self._attr_unique_id = f"{entry.entry_id}_{description.key}"
-        self._attr_name = description.name
-        self._attr_has_entity_name = True
-        self._attr_icon = description.icon
+    entity_description: AppleJuiceBinarySensorDescription
 
     @property
-    def is_on(self):
-        if self.entity_description.value_fn:
-            return self.entity_description.value_fn(self)
-        return False
+    def is_on(self) -> bool:
+        """Current state."""
+        return self.entity_description.value_fn(self.coordinator.data)
+
+
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: AppleJuiceConfigEntry,
+    async_add_entities: AddConfigEntryEntitiesCallback,
+) -> None:
+    """Set up binary sensor platform."""
+    async_add_entities(AppleJuiceBinarySensor(entry.runtime_data, desc) for desc in BINARY_SENSORS)
