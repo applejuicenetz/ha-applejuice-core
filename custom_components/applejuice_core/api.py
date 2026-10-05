@@ -3,6 +3,7 @@
 import asyncio
 import hashlib
 import logging
+import re
 
 import aiohttp
 import defusedxml.ElementTree as ET
@@ -57,3 +58,13 @@ async def get_xml_data(hass: HomeAssistant, url: str, port: int, password: str, 
         _LOGGER.error("Error while fetching XML data: %s", e)
 
     return None
+
+
+def parse_version(version: str | None) -> tuple[int, ...] | None:
+    """Parse '0.35.185.93' (optionally with suffix) into a comparable tuple."""
+    if not version:
+        return None
+    try:
+        return tuple(int(p) for p in re.sub(r"[^0-9.]", "", version).strip(".").split("."))
+    except ValueError:
+        return None

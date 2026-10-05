@@ -15,3 +15,6 @@ CONF_TLS = "tls"
 CONF_OPTION_POLLING_RATE = "polling_rate"
 
 TIMEOUT = 10
+
+# Button nur für Cores NEUER als diese Version (letzte öffentliche Version, exklusiv).
+SHARECHECK_AFTER_CORE_VERSION = "0.35.185.93"
