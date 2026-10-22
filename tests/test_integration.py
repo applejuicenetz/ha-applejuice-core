@@ -86,6 +86,11 @@ async def test_setup_and_states(hass: HomeAssistant, aioclient_mock) -> None:
     assert hass.states.get(entity_id(hass, "sensor", "downloads_paused", entry)).state == "1"
     assert hass.states.get(entity_id(hass, "sensor", "connected_server_name", entry)).state == "srv.example"
     assert hass.states.get(entity_id(hass, "sensor", "shared_size", entry)).state == "1.0"
+    # Raw bytes in, display units are binary (GiB, KiB/s, TiB).
+    upload = hass.states.get(entity_id(hass, "sensor", "uploadspeed", entry))
+    assert upload.state == "1024.0" and upload.attributes["unit_of_measurement"] == "KiB/s"
+    size = hass.states.get(entity_id(hass, "sensor", "global_file_size", entry))
+    assert size.attributes["unit_of_measurement"] == "TiB"
     assert hass.states.get(entity_id(hass, "number", "setting_maxupload", entry)).state == "100"
     assert hass.states.get(entity_id(hass, "switch", "setting_autoconnect", entry)).state == "on"
     assert hass.states.get(entity_id(hass, "text", "setting_nickname", entry)).state == "leo"

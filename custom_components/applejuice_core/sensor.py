@@ -23,8 +23,7 @@ from .entity import AppleJuiceCoreEntity, AppleJuiceNetworkEntity
 
 PARALLEL_UPDATES = 0
 
-GB = 1024**3
-MB = 1024**2
+MIB = 1024**2
 
 
 def _attr(data: Element, tag: str, name: str, default: str = "0") -> str:
@@ -33,12 +32,9 @@ def _attr(data: Element, tag: str, name: str, default: str = "0") -> str:
     return node.attrib.get(name, default) if node is not None else default
 
 
-def _info_gb(name: str) -> Callable[[Element], float]:
-    return lambda data: round(int(_attr(data, "information", name)) / GB, 2)
-
-
-def _info_mb(name: str) -> Callable[[Element], float]:
-    return lambda data: round(int(_attr(data, "information", name)) / MB, 2)
+def _info_bytes(name: str) -> Callable[[Element], int]:
+    """Raw byte value of an `information` attribute; Home Assistant converts to the display unit."""
+    return lambda data: int(_attr(data, "information", name))
 
 
 def _downloads_with_status(status: str) -> Callable[[Element], int]:
@@ -73,46 +69,56 @@ SENSORS_CORE: tuple[AppleJuiceSensorDescription, ...] = (
         key="credits",
         name="Credits",
         icon="mdi:cash",
-        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIBIBYTES,
+        suggested_display_precision=2,
         device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.TOTAL_INCREASING,
-        value_fn=_info_gb("credits"),
+        state_class=SensorStateClass.MEASUREMENT,
+        value_fn=_info_bytes("credits"),
     ),
     AppleJuiceSensorDescription(
         key="sessionupload",
         name="Session Upload",
         icon="mdi:upload-network",
-        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIBIBYTES,
+        suggested_display_precision=2,
         device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_info_gb("sessionupload"),
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=_info_bytes("sessionupload"),
     ),
     AppleJuiceSensorDescription(
         key="sessiondownload",
         name="Session Download",
         icon="mdi:download-network",
-        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIBIBYTES,
+        suggested_display_precision=2,
         device_class=SensorDeviceClass.DATA_SIZE,
-        state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_info_gb("sessiondownload"),
+        state_class=SensorStateClass.TOTAL_INCREASING,
+        value_fn=_info_bytes("sessiondownload"),
     ),
     AppleJuiceSensorDescription(
         key="uploadspeed",
         name="Upload Speed",
         icon="mdi:upload",
-        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.KIBIBYTES_PER_SECOND,
+        suggested_display_precision=1,
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_info_mb("uploadspeed"),
+        value_fn=_info_bytes("uploadspeed"),
     ),
     AppleJuiceSensorDescription(
         key="downloadspeed",
         name="Download Speed",
         icon="mdi:download",
-        native_unit_of_measurement=UnitOfDataRate.MEGABYTES_PER_SECOND,
+        native_unit_of_measurement=UnitOfDataRate.BYTES_PER_SECOND,
+        suggested_unit_of_measurement=UnitOfDataRate.KIBIBYTES_PER_SECOND,
+        suggested_display_precision=1,
         device_class=SensorDeviceClass.DATA_RATE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=_info_mb("downloadspeed"),
+        value_fn=_info_bytes("downloadspeed"),
     ),
     AppleJuiceSensorDescription(
         key="openconnections",
@@ -182,10 +188,12 @@ SENSORS_CORE: tuple[AppleJuiceSensorDescription, ...] = (
         key="shared_size",
         name="Share Size",
         icon="mdi:file-outline",
-        native_unit_of_measurement=UnitOfInformation.GIGABYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.GIBIBYTES,
+        suggested_display_precision=2,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: round(sum(int(s.attrib.get("size", 0)) for s in _shares(data)) / GB, 2),
+        value_fn=lambda data: sum(int(s.attrib.get("size", 0)) for s in _shares(data)),
     ),
 )
 
@@ -207,10 +215,12 @@ SENSORS_NETWORK: tuple[AppleJuiceSensorDescription, ...] = (
     AppleJuiceSensorDescription(
         key="global_file_size",
         name="Global Size",
-        native_unit_of_measurement=UnitOfInformation.TERABYTES,
+        native_unit_of_measurement=UnitOfInformation.BYTES,
+        suggested_unit_of_measurement=UnitOfInformation.TEBIBYTES,
+        suggested_display_precision=2,
         device_class=SensorDeviceClass.DATA_SIZE,
         state_class=SensorStateClass.MEASUREMENT,
-        value_fn=lambda data: round(float(_attr(data, "networkinfo", "filesize").replace(",", ".")) / MB, 2),
+        value_fn=lambda data: round(float(_attr(data, "networkinfo", "filesize").replace(",", ".")) * MIB),
     ),
     AppleJuiceSensorDescription(
         key="known_servers",
